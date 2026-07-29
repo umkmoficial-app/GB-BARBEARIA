@@ -806,12 +806,9 @@ export default function App() {
             <div className="w-8 h-8 md:w-10 md:h-10 bg-amber-500 rounded-lg flex items-center justify-center">
               <Scissors className="text-black w-4.5 h-4.5 md:w-6 md:h-6" />
             </div>
-            <h1 className="text-lg md:text-2xl font-black tracking-tighter uppercase italic text-white flex items-center gap-1.5">
-              <span className="text-amber-500 font-extrabold">
-                <span className="sm:hidden">GABRIEL</span>
-                <span className="hidden sm:inline">GB</span>
-              </span>
-              <span className="hidden sm:inline">BARBEARIA</span>
+            <h1 className="text-base sm:text-lg md:text-2xl font-black tracking-tighter uppercase italic text-white flex items-center gap-1 md:gap-1.5">
+              <span className="text-amber-500 font-extrabold">GB</span>
+              <span>BARBEARIA</span>
             </h1>
           </div>
           
