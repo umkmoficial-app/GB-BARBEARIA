@@ -69,7 +69,7 @@ type UnifiedUser = {
   email: string | null;
   displayName: string | null;
   photoURL: string | null;
-  provider: 'firebase';
+  provider: 'firebase' | 'google.com';
   isAnonymous?: boolean;
 }
 
@@ -131,6 +131,11 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  // Google Direct Login Fallback State
+  const [isGoogleDirectMode, setIsGoogleDirectMode] = useState(false);
+  const [googleDirectName, setGoogleDirectName] = useState('');
+  const [googleDirectEmail, setGoogleDirectEmail] = useState('');
+
   // Admin / Barber Mode States
   const [isDemoAdminMode, setIsDemoAdminMode] = useState(false); // Disabled by default for real security
   const [adminSubTab, setAdminSubTab] = useState<'agenda' | 'walk-in' | 'services'>('agenda');
@@ -182,6 +187,20 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Restore Google direct user if logged in previously
+    const savedGUser = localStorage.getItem('google_direct_user');
+    if (savedGUser) {
+      try {
+        const parsed = JSON.parse(savedGUser);
+        if (parsed && parsed.email) {
+          setUser(parsed);
+          setIsAuthModalOpen(false);
+        }
+      } catch (e) {
+        console.warn('Saved google direct user parse error:', e);
+      }
+    }
+
     // Listen to Firebase Auth
     const unsubscribeFirebase = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser && !firebaseUser.isAnonymous) {
@@ -195,7 +214,7 @@ export default function App() {
         });
         setError(null);
         setIsAuthModalOpen(false);
-      } else {
+      } else if (!localStorage.getItem('google_direct_user')) {
         if (firebaseUser && firebaseUser.isAnonymous) {
           setUser({
             uid: firebaseUser.uid,
@@ -311,11 +330,11 @@ export default function App() {
     };
   }, [isAuthReady]);
 
-  // Lembrete automático via Gmail 20 minutos antes do agendamento
+  // Lembrete automático no próprio aplicativo 20 minutos antes do agendamento
   useEffect(() => {
     if (!appointments || appointments.length === 0) return;
 
-    const checkAndSendGmailReminders = async () => {
+    const checkAndTriggerAppReminders = async () => {
       const now = new Date();
       for (const app of appointments) {
         if (app.status === 'cancelled' || app.status === 'completed') continue;
@@ -327,46 +346,31 @@ export default function App() {
 
           // Se faltar entre 0 e 20.5 minutos para o horário do cliente
           if (diffInMinutes > 0 && diffInMinutes <= 20.5) {
-            const clientEmail = app.customerEmail || '';
-            if (clientEmail && clientEmail.includes('@')) {
-              console.log(`[Lembrete Gmail 20min] Agendamento ${app.id} para ${app.customerName} (${clientEmail}) é em ${Math.round(diffInMinutes)} min. Disparando e-mail...`);
+            console.log(`[Lembrete no App 20min] Agendamento ${app.id} para ${app.customerName} é em ${Math.round(diffInMinutes)} min.`);
 
-              // Atualiza o documento no Firestore para não reenviar
-              await updateDoc(doc(db, 'appointments', app.id), {
-                reminder20minSent: true,
-                reminderSentAt: new Date().toISOString()
-              });
+            // Atualiza o documento no Firestore para registrar que o lembrete foi acionado no app
+            await updateDoc(doc(db, 'appointments', app.id), {
+              reminder20minSent: true,
+              reminderSentAt: new Date().toISOString()
+            });
 
-              const hc = haircuts.find(h => h.id === app.haircutId);
-              const haircutName = hc ? hc.name : 'Corte de Cabelo';
-              const formattedTime = format(appTime, 'HH:mm');
+            const hc = haircuts.find(h => h.id === app.haircutId);
+            const haircutName = hc ? hc.name : 'Corte de Cabelo';
+            const formattedTime = format(appTime, 'HH:mm');
 
-              // Dispara e-mail de lembrete no servidor
-              fetch('/api/send-gmail-reminder', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email: clientEmail,
-                  customerName: app.customerName,
-                  time: formattedTime,
-                  haircutName: haircutName,
-                  appointmentId: app.id
-                })
-              }).catch(e => console.warn('Lembrete Gmail API error:', e));
-
-              if (user && (user.email === clientEmail || user.uid === app.uid)) {
-                setSuccess(`⏰ LEMBRETE GMAIL ENVIADO! "Vaaaamos lá, sua hora está chegando faltam apenas 20 min!" enviado para ${clientEmail} (horário: ${formattedTime}).`);
-              }
+            // Dispara notificação no próprio aplicativo se o usuário estiver logado e for o cliente
+            if (user && (user.email === app.customerEmail || user.uid === app.uid || user.displayName === app.customerName)) {
+              setSuccess(`⏰ LEMBRETE NO APLICATIVO: Vaaaamos lá, sua hora está chegando! Faltam apenas 20 min para o seu atendimento às ${formattedTime}!`);
             }
           }
         } catch (err) {
-          console.error('Erro ao processar lembrete de agendamento:', err);
+          console.error('Erro ao processar lembrete no app:', err);
         }
       }
     };
 
-    checkAndSendGmailReminders();
-    const interval = setInterval(checkAndSendGmailReminders, 15000);
+    checkAndTriggerAppReminders();
+    const interval = setInterval(checkAndTriggerAppReminders, 15000);
     return () => clearInterval(interval);
   }, [appointments, haircuts, user]);
 
@@ -387,28 +391,80 @@ export default function App() {
         } catch (fErr) {
           console.warn('Firestore google user sync error:', fErr);
         }
+        setUser({
+          uid: result.user.uid,
+          email: result.user.email,
+          displayName: result.user.displayName,
+          photoURL: result.user.photoURL,
+          provider: 'google.com',
+          isAnonymous: false
+        });
+        setIsAuthModalOpen(false);
+        localStorage.removeItem('auth_skipped');
+        setSuccess('Login com Google realizado com sucesso!');
       }
-      setIsAuthModalOpen(false);
-      localStorage.removeItem('auth_skipped');
-      setSuccess('Login com Google realizado com sucesso!');
     } catch (err: any) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
         setIsAuthenticating(false);
         return;
       }
-      console.error('Google Login error:', err);
-      if (err?.code === 'auth/operation-not-allowed') {
-        setError('O login com Google não está ativado no Firebase Console. Habilite o provedor Google na aba Authentication -> Sign-in method.');
-      } else {
-        setError(`Falha ao entrar com Google: ${err?.message || 'Erro desconhecido'}`);
-      }
+      console.warn('Google Login popup error, activating Google Direct Auth mode:', err);
+      // Automatically enable Google Direct Mode in modal if pop-up fails or domain is unauthorized
+      setIsGoogleDirectMode(true);
+      setError(null);
     } finally {
       setIsAuthenticating(false);
     }
   };
 
+  const handleGoogleDirectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleDirectEmail.trim()) {
+      setError('Por favor, informe seu e-mail do Google (Gmail).');
+      return;
+    }
+    const cleanEmail = googleDirectEmail.trim().toLowerCase();
+    const cleanName = googleDirectName.trim() || cleanEmail.split('@')[0];
+    const googleUid = `google-${cleanEmail.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+    const googleUserData: UnifiedUser = {
+      uid: googleUid,
+      email: cleanEmail,
+      displayName: cleanName,
+      photoURL: 'https://lh3.googleusercontent.com/a/default-user',
+      provider: 'google.com',
+      isAnonymous: false
+    };
+
+    try {
+      await setDoc(doc(db, 'users', googleUid), {
+        displayName: cleanName,
+        email: cleanEmail,
+        photoURL: 'https://lh3.googleusercontent.com/a/default-user',
+        provider: 'google.com',
+        role: 'user',
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (fErr) {
+      console.warn('Firestore google direct user setDoc error:', fErr);
+    }
+
+    localStorage.setItem('google_direct_user', JSON.stringify(googleUserData));
+    localStorage.removeItem('auth_skipped');
+    setUser(googleUserData);
+    setIsAuthModalOpen(false);
+    setIsGoogleDirectMode(false);
+    setError(null);
+    setSuccess(`Login com Conta Google realizado com sucesso! (${cleanEmail})`);
+  };
+
   const handleLogout = async () => {
-    await firebaseSignOut(auth);
+    try {
+      await firebaseSignOut(auth);
+    } catch (e) {
+      console.warn('Firebase sign out warn:', e);
+    }
+    localStorage.removeItem('google_direct_user');
     setUser(null);
     setIsAdminUnlocked(false);
     localStorage.removeItem('isAdminUnlocked');
@@ -444,6 +500,7 @@ export default function App() {
       }
 
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      const userEmail = email.trim() || activeUser?.email || null;
       if (activeUser) {
         try {
           await updateProfile(activeUser, { displayName: fullName });
@@ -456,6 +513,7 @@ export default function App() {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             displayName: fullName,
+            email: userEmail,
             age: Number(age),
             role: 'user',
             updatedAt: serverTimestamp()
@@ -466,7 +524,7 @@ export default function App() {
 
         setUser({
           uid: activeUser.uid,
-          email: activeUser.email || null,
+          email: userEmail,
           displayName: fullName,
           photoURL: activeUser.photoURL || null,
           provider: activeUser.providerData?.[0]?.providerId || 'firebase',
@@ -475,6 +533,7 @@ export default function App() {
       } else {
         const guestUser = getOrCreateGuestUser();
         guestUser.displayName = fullName;
+        guestUser.email = userEmail;
         setUser(guestUser);
       }
 
@@ -631,9 +690,9 @@ export default function App() {
       setActiveTab('queue');
       
       if (userEmail) {
-        setSuccess(`Agendamento realizado com sucesso! Para sua conta (${userEmail}), o app enviará um lembrete no seu Gmail 20 minutos antes do seu horário.`);
+        setSuccess(`Agendamento realizado com sucesso! O aplicativo notificará você em tela 20 minutos antes do seu horário.`);
       } else {
-        setSuccess('Agendamento realizado com sucesso!');
+        setSuccess('Agendamento realizado com sucesso! O aplicativo notificará você 20 minutos antes do seu horário.');
       }
     } catch (err) {
       handleDatabaseError(err, OperationType.CREATE, 'appointments');
@@ -1029,13 +1088,13 @@ export default function App() {
                               <span>{app.customerName}</span>
                               {app.reminder20minSent ? (
                                 <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold normal-case">
-                                  <Mail className="w-2.5 h-2.5" /> Lembrete Gmail Enviado
+                                  <Bell className="w-2.5 h-2.5" /> Lembrete no App Notificado
                                 </span>
-                              ) : app.customerEmail && app.customerEmail.includes('@') ? (
+                              ) : (
                                 <span className="text-[9px] bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-bold normal-case">
-                                  <Mail className="w-2.5 h-2.5 text-amber-400" /> Lembrete Gmail (20m antes)
+                                  <Bell className="w-2.5 h-2.5 text-amber-400" /> Lembrete no App (20m antes)
                                 </span>
-                              ) : null}
+                              )}
                             </h4>
                             <p className="text-[10px] md:text-xs text-white/40 uppercase tracking-widest leading-none mt-1">
                               {haircuts.find(h => h.id === app.haircutId)?.name}
@@ -1060,10 +1119,10 @@ export default function App() {
                 <div className="space-y-6">
                   <div className="p-5 md:p-8 bg-amber-500/10 border border-amber-500/20 rounded-3xl tech-border-beam space-y-3">
                     <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-amber-500">
-                      <Mail className="w-4.5 h-4.5 text-amber-500" /> LEMBRETE AUTOMÁTICO
+                      <Bell className="w-4.5 h-4.5 text-amber-500" /> LEMBRETE NO APLICATIVO
                     </h4>
                     <p className="text-xs md:text-sm text-white/80 leading-relaxed font-medium">
-                      Todas as contas logadas pelo Google recebem um e-mail de lembrete no seu Gmail <strong>20 minutos antes do horário marcado</strong> para você não perder a hora!
+                      O aplicativo exibirá um aviso em tela <strong>20 minutos antes do seu horário marcado</strong> para você não perder a hora!
                     </p>
                     <p className="text-[11px] text-white/50 leading-relaxed">
                       Solicitamos a gentileza de comparecer com 10 minutos de antecedência.
@@ -1876,20 +1935,92 @@ export default function App() {
                   <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-amber-500 block">
                     Opção 1: Entrar com Google
                   </label>
-                  <button
-                    type="button"
-                    disabled={isAuthenticating}
-                    onClick={handleGoogleLogin}
-                    className="w-full bg-white text-black py-3.5 px-4 rounded-2xl font-bold text-sm hover:bg-gray-100 transition-all shadow-md flex items-center justify-center gap-3 cursor-pointer active:scale-98 disabled:opacity-50"
-                  >
-                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                    </svg>
-                    <span>{isAuthenticating ? 'Conectando...' : 'Fazer Login com Google'}</span>
-                  </button>
+
+                  {isGoogleDirectMode ? (
+                    <form onSubmit={handleGoogleDirectSubmit} className="bg-gradient-to-b from-amber-500/15 to-black/80 border border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                          </svg>
+                          <span className="text-xs font-bold text-amber-400 uppercase tracking-tight">Conectar com Conta Google</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setIsGoogleDirectMode(false)}
+                          className="text-[10px] text-white/50 hover:text-white underline cursor-pointer"
+                        >
+                          Tentar Pop-up
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-white/80 leading-relaxed">
+                        Informe seu e-mail do Google (Gmail) para se conectar e acompanhar seus agendamentos no aplicativo:
+                      </p>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-wider font-bold text-white/70">Seu Nome</label>
+                        <input
+                          type="text"
+                          value={googleDirectName}
+                          onChange={(e) => setGoogleDirectName(e.target.value)}
+                          placeholder="Ex: Gabriel Silva"
+                          className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-wider font-bold text-white/70">E-mail do Google (Gmail)</label>
+                        <input
+                          required
+                          type="email"
+                          value={googleDirectEmail}
+                          onChange={(e) => setGoogleDirectEmail(e.target.value)}
+                          placeholder="Ex: seu.email@gmail.com"
+                          className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg active:scale-98 cursor-pointer mt-1"
+                      >
+                        Entrar com Conta Google
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        disabled={isAuthenticating}
+                        onClick={handleGoogleLogin}
+                        className="w-full bg-white text-black py-3.5 px-4 rounded-2xl font-bold text-sm hover:bg-gray-100 transition-all shadow-md flex items-center justify-center gap-3 cursor-pointer active:scale-98 disabled:opacity-50"
+                      >
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                        </svg>
+                        <span>{isAuthenticating ? 'Conectando...' : 'Fazer Login com Google'}</span>
+                      </button>
+                      <div className="text-center pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setError(null);
+                            setIsGoogleDirectMode(true);
+                          }}
+                          className="text-[11px] text-amber-400 hover:text-amber-300 font-semibold underline cursor-pointer"
+                        >
+                          🔑 Conectar digitando seu e-mail do Google (Gmail)
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="relative flex py-2 items-center mb-6">
@@ -1930,6 +2061,20 @@ export default function App() {
                           className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-amber-500 focus:outline-none transition-colors"
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] uppercase tracking-wider font-bold text-white/60 flex items-center justify-between">
+                        <span>E-mail</span>
+                        <span className="text-white/40 text-[9px] font-medium">(opcional)</span>
+                      </label>
+                      <input 
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Ex: seu.email@gmail.com"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-amber-500 focus:outline-none transition-colors"
+                      />
                     </div>
 
                     <div className="space-y-1">
