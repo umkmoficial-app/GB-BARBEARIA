@@ -1,0 +1,137 @@
+{
+  "entities": {
+    "Haircut": {
+      "title": "Haircut",
+      "description": "Estilo de corte de cabelo ou serviço de barbearia.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "duration": { "type": "number" },
+        "image": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "price", "duration", "image"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "Agendamento de um cliente para um serviço.",
+      "type": "object",
+      "properties": {
+        "customerName": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "haircutId": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["waiting", "in-service", "completed", "cancelled"] },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["customerName", "haircutId", "startTime", "status", "uid"]
+    },
+    "PoolGame": {
+      "title": "PoolGame",
+      "description": "Estado do jogo de sinuca virtual sincronizado em tempo real.",
+      "type": "object",
+      "properties": {
+        "player1": { "type": "object" },
+        "player2": { "type": "object" },
+        "queue": { "type": "array" },
+        "gameState": { "type": "string" },
+        "turn": { "type": "string" },
+        "balls": { "type": "array" },
+        "lastShot": { "type": "object" },
+        "winner": { "type": "string" },
+        "player1Type": { "type": "string" },
+        "player2Type": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "DominoRoom": {
+      "title": "DominoRoom",
+      "description": "Estado do jogo de dominó ao vivo em tempo real.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "creator": { "type": "object" },
+        "opponent": { "type": "object" },
+        "turn": { "type": "string" },
+        "board": { "type": "array" },
+        "boneyard": { "type": "array" },
+        "p1Hand": { "type": "array" },
+        "p2Hand": { "type": "array" },
+        "winner": { "type": "string" },
+        "gameStatus": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "PenaltyRoom": {
+      "title": "PenaltyRoom",
+      "description": "Estado do jogo de pênalti online ao vivo em tempo real.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "creator": { "type": "object" },
+        "opponent": { "type": "object" },
+        "round": { "type": "number" },
+        "turn": { "type": "string" },
+        "p1Score": { "type": "number" },
+        "p2Score": { "type": "number" },
+        "kickerAction": { "type": "object" },
+        "gkAction": { "type": "object" },
+        "gameState": { "type": "string" },
+        "winner": { "type": "string" },
+        "gameStatus": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    },
+    "UnoRoom": {
+      "title": "UnoRoom",
+      "description": "Estado do jogo de cartas UNO online ao vivo em tempo real.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "creator": { "type": "object" },
+        "opponent": { "type": "object" },
+        "currentTurn": { "type": "string" },
+        "deck": { "type": "array" },
+        "discardPile": { "type": "array" },
+        "p1Hand": { "type": "array" },
+        "p2Hand": { "type": "array" },
+        "activeColor": { "type": "string" },
+        "winner": { "type": "string" },
+        "gameStatus": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      }
+    }
+  },
+  "firestore": {
+    "/haircuts": {
+      "schema": "Haircut",
+      "description": "Catálogo de serviços disponíveis."
+    },
+    "/appointments": {
+      "schema": "Appointment",
+      "description": "Lista de agendamentos e fila."
+    },
+    "/pool_game": {
+      "schema": "PoolGame",
+      "description": "Controle da mesa de sinuca compartilhada."
+    },
+    "/domino_rooms": {
+      "schema": "DominoRoom",
+      "description": "Estado das mesas de dominó online ao vivo."
+    },
+    "/pool_rooms": {
+      "schema": "PoolGame",
+      "description": "Estado das mesas de sinuca online ao vivo em tempo real."
+    },
+    "/penalty_rooms": {
+      "schema": "PenaltyRoom",
+      "description": "Estado das disputas de pênalti online ao vivo em tempo real."
+    },
+    "/uno_rooms": {
+      "schema": "UnoRoom",
+      "description": "Estado das mesas de cartas UNO online ao vivo em tempo real."
+    }
+  }
+}

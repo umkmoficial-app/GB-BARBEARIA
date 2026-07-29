@@ -1,0 +1,8 @@
+{
+  "name": "GB Barbearia",
+  "description": "Sistema completo para barbearias com agendamento inteligente, fila em tempo real e catálogo de estilos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

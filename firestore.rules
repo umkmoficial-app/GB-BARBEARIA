@@ -1,0 +1,61 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: haircuts
+// Fields:
+//   - name: string (required)
+//   - price: number (required)
+//   - duration: number (required)
+//   - image: string (required)
+//   - description: string (optional)
+//
+// Collection: appointments
+// Fields:
+//   - customerName: string (required)
+//   - customerEmail: string (optional)
+//   - haircutId: string (required)
+//   - startTime: string (required, ISO 8601)
+//   - status: string (required, enum: ['waiting', 'in-service', 'completed', 'cancelled'])
+//   - uid: string (required)
+//   - createdAt: timestamp (required)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    match /haircuts/{haircutId} {
+      allow read, write: if true;
+    }
+    
+    match /appointments/{appointmentId} {
+      allow read, write: if true;
+    }
+
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    match /pool_game/{gameId} {
+      allow read, write: if true;
+    }
+
+    match /domino_rooms/{roomId} {
+      allow read, write: if true;
+    }
+
+    match /pool_rooms/{roomId} {
+      allow read, write: if true;
+    }
+
+    match /penalty_rooms/{roomId} {
+      allow read, write: if true;
+    }
+
+    match /uno_rooms/{roomId} {
+      allow read, write: if true;
+    }
+  }
+}

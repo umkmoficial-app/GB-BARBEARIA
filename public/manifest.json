@@ -1,0 +1,22 @@
+{
+  "short_name": "GB Barbearia",
+  "name": "GB Barbearia",
+  "description": "Sistema de Agendamento e Fila para Barbearia",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0F0F0F",
+  "theme_color": "#0F0F0F",
+  "display": "standalone",
+  "orientation": "portrait"
+}
