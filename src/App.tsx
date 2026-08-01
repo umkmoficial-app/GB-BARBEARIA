@@ -1186,13 +1186,16 @@ export default function App() {
                       const enteredUser = adminUsername.trim().toUpperCase();
                       const enteredPass = adminPassword.trim().toUpperCase();
 
-                      const validUsernames = ['CHAVEGABRIEL'];
-                      const validPasswords = ['CHAVEGABRIEL'];
+                      const validCredentials = [
+                        { user: 'CHAVEGABRIEL', pass: 'CHAVEGABRIEL' },
+                        { user: 'CHAVERUDNEY', pass: 'CHAVERUDNEY' },
+                      ];
 
-                      if (
-                        validUsernames.includes(enteredUser) && 
-                        validPasswords.includes(enteredPass)
-                      ) {
+                      const isValid = validCredentials.some(
+                        cred => cred.user === enteredUser && cred.pass === enteredPass
+                      );
+
+                      if (isValid) {
                         setIsAdminUnlocked(true);
                         localStorage.setItem('isAdminUnlocked', 'true');
                         setSuccess('Painel Administrativo Desbloqueado!');
