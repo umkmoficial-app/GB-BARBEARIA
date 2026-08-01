@@ -1161,7 +1161,7 @@ export default function App() {
 
                 <div className="space-y-6">
                   {/* Card Notificação WhatsApp 1-Clique com Luz Neon Verde */}
-                  <div className="p-5 md:p-8 bg-emerald-950/30 border-2 border-emerald-400/80 rounded-3xl tech-border-beam space-y-3 shadow-[0_0_30px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/50">
+                  <div className="p-5 md:p-8 bg-emerald-950/30 border-2 border-emerald-400/80 rounded-3xl space-y-3 shadow-[0_0_30px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/50">
                     <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">
                       <MessageSquare className="w-4.5 h-4.5 text-emerald-400 animate-pulse" /> NOTIFICAÇÃO 1-CLIQUE WHATSAPP
                     </h4>
