@@ -1160,10 +1160,10 @@ export default function App() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Card Notificação WhatsApp 1-Clique */}
-                  <div className="p-5 md:p-8 bg-emerald-500/10 border border-emerald-500/30 rounded-3xl tech-border-beam space-y-3">
-                    <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-emerald-400">
-                      <MessageSquare className="w-4.5 h-4.5 text-emerald-400" /> NOTIFICAÇÃO 1-CLIQUE WHATSAPP
+                  {/* Card Notificação WhatsApp 1-Clique com Luz Neon Verde */}
+                  <div className="p-5 md:p-8 bg-emerald-950/30 border-2 border-emerald-400/80 rounded-3xl tech-border-beam space-y-3 shadow-[0_0_30px_rgba(16,185,129,0.45)] ring-1 ring-emerald-400/50">
+                    <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">
+                      <MessageSquare className="w-4.5 h-4.5 text-emerald-400 animate-pulse" /> NOTIFICAÇÃO 1-CLIQUE WHATSAPP
                     </h4>
                     <p className="text-xs md:text-sm text-white/90 leading-relaxed font-medium">
                       Notificação direta com 1 clique enviada para o administrador e barbeiro <strong>Gabriel</strong> (<strong>55 21 98988-4121</strong>) com as informações do seu agendamento!
@@ -1178,9 +1178,9 @@ export default function App() {
                           sendWhatsAppNotificationToAdmin('Cliente GB', 'Consulta de Agendamento', format(new Date(), 'HH:mm'));
                         }
                       }}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/30 active:scale-95"
+                      className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.6)] active:scale-95"
                     >
-                      <MessageSquare className="w-4 h-4" />
+                      <MessageSquare className="w-4 h-4 fill-black" />
                       <span>Notificar Gabriel no WhatsApp (1 Clique)</span>
                     </button>
                   </div>
