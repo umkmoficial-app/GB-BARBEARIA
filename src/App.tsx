@@ -28,7 +28,8 @@ import {
   Lock,
   ShieldAlert,
   User as UserIcon,
-  Sparkles
+  Sparkles,
+  MessageSquare
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { cn } from './lib/utils';
@@ -157,6 +158,24 @@ export default function App() {
   const [reschedulingApp, setReschedulingApp] = useState<Appointment | null>(null);
   const [rescheduleTime, setRescheduleTime] = useState('');
   const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false);
+
+  // 1-Click WhatsApp Direct Notification State for Admin Gabriel (55 21 98988-4121)
+  const [whatsappNotifyModal, setWhatsappNotifyModal] = useState<{
+    customerName: string;
+    haircutName: string;
+    bookingTime: string;
+  } | null>(null);
+
+  const sendWhatsAppNotificationToAdmin = (customerName: string, haircutName: string, bookingTime: string) => {
+    const adminPhone = '5521989884121';
+    const text = `*GB BARBEARIA - Notificação de Agendamento!* ✂️\n\n` +
+      `👤 *Cliente:* ${customerName}\n` +
+      `✂️ *Serviço:* ${haircutName}\n` +
+      `⏰ *Horário:* ${bookingTime}\n\n` +
+      `_Enviado via Notificação 1-Clique pelo App GB BARBEARIA._`;
+    const url = `https://wa.me/${adminPhone}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
 
   // Admin State
   const [editingHaircut, setEditingHaircut] = useState<Partial<Haircut> | null>(null);
@@ -617,9 +636,14 @@ export default function App() {
         uid: 'walk-in',
         createdAt: serverTimestamp()
       });
+
+      const hc = haircuts.find(h => h.id === walkInHaircutId);
+      const hcName = hc ? hc.name : 'Corte Presencial';
+      sendWhatsAppNotificationToAdmin(walkInName, hcName, walkInTime);
+
       setWalkInName('');
       setWalkInTime('');
-      setSuccess('Cliente presencial adicionado com sucesso!');
+      setSuccess('Cliente presencial adicionado com sucesso! Notificação do WhatsApp aberta.');
       setAdminSubTab('agenda');
     } catch (err) {
       handleDatabaseError(err, OperationType.CREATE, 'appointments');
@@ -683,17 +707,25 @@ export default function App() {
         createdAt: serverTimestamp()
       });
 
+      const bookedCustomerName = customerName;
+      const bookedHaircutName = selectedHaircut.name;
+      const bookedTime = bookingTime;
+
       setIsBookingModalOpen(false);
       setCustomerName('');
       setBookingTime('');
       setSelectedHaircut(null);
       setActiveTab('queue');
-      
-      if (userEmail) {
-        setSuccess(`Agendamento realizado com sucesso! O aplicativo notificará você em tela 20 minutos antes do seu horário.`);
-      } else {
-        setSuccess('Agendamento realizado com sucesso! O aplicativo notificará você 20 minutos antes do seu horário.');
-      }
+
+      // Trigger 1-Click WhatsApp notification to Gabriel (55 21 98988-4121)
+      sendWhatsAppNotificationToAdmin(bookedCustomerName, bookedHaircutName, bookedTime);
+      setWhatsappNotifyModal({
+        customerName: bookedCustomerName,
+        haircutName: bookedHaircutName,
+        bookingTime: bookedTime
+      });
+
+      setSuccess(`Agendamento realizado! WhatsApp com 1-Clique aberto para notificar o barbeiro Gabriel (55 21 98988-4121).`);
     } catch (err) {
       handleDatabaseError(err, OperationType.CREATE, 'appointments');
     }
@@ -1098,11 +1130,25 @@ export default function App() {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-lg md:text-xl font-bold tracking-tighter text-amber-500">
-                            {format(parseISO(app.startTime), 'HH:mm')}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <button 
+                            onClick={() => {
+                              const haircutName = haircuts.find(h => h.id === app.haircutId)?.name || 'Corte';
+                              const formattedTime = format(parseISO(app.startTime), 'HH:mm');
+                              sendWhatsAppNotificationToAdmin(app.customerName, haircutName, formattedTime);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] md:text-xs font-bold uppercase tracking-wider px-2.5 md:px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-emerald-900/30 active:scale-95 cursor-pointer"
+                            title="Notificar Gabriel no WhatsApp com 1 Clique"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">1-Clique WhatsApp</span>
+                          </button>
+                          <div className="text-right">
+                            <div className="text-lg md:text-xl font-bold tracking-tighter text-amber-500">
+                              {format(parseISO(app.startTime), 'HH:mm')}
+                            </div>
+                            <div className="text-[9px] md:text-[10px] uppercase tracking-widest opacity-40 leading-none mt-0.5">Previsão</div>
                           </div>
-                          <div className="text-[9px] md:text-[10px] uppercase tracking-widest opacity-40 leading-none mt-0.5">Previsão</div>
                         </div>
                       </div>
                     )) : (
@@ -1114,6 +1160,31 @@ export default function App() {
                 </div>
 
                 <div className="space-y-6">
+                  {/* Card Notificação WhatsApp 1-Clique */}
+                  <div className="p-5 md:p-8 bg-emerald-500/10 border border-emerald-500/30 rounded-3xl tech-border-beam space-y-3">
+                    <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-emerald-400">
+                      <MessageSquare className="w-4.5 h-4.5 text-emerald-400" /> NOTIFICAÇÃO 1-CLIQUE WHATSAPP
+                    </h4>
+                    <p className="text-xs md:text-sm text-white/90 leading-relaxed font-medium">
+                      Notificação direta com 1 clique enviada para o administrador e barbeiro <strong>Gabriel</strong> (<strong>55 21 98988-4121</strong>) com as informações do seu agendamento!
+                    </p>
+                    <button
+                      onClick={() => {
+                        const nextApp = nextInQueue[0];
+                        if (nextApp) {
+                          const hcName = haircuts.find(h => h.id === nextApp.haircutId)?.name || 'Corte';
+                          sendWhatsAppNotificationToAdmin(nextApp.customerName, hcName, format(parseISO(nextApp.startTime), 'HH:mm'));
+                        } else {
+                          sendWhatsAppNotificationToAdmin('Cliente GB', 'Consulta de Agendamento', format(new Date(), 'HH:mm'));
+                        }
+                      }}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-emerald-600/30 active:scale-95"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Notificar Gabriel no WhatsApp (1 Clique)</span>
+                    </button>
+                  </div>
+
                   <div className="p-5 md:p-8 bg-amber-500/10 border border-amber-500/20 rounded-3xl tech-border-beam space-y-3">
                     <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-amber-500">
                       <Bell className="w-4.5 h-4.5 text-amber-500" /> LEMBRETE NO APLICATIVO
@@ -2117,6 +2188,70 @@ export default function App() {
                     Continuar como convidado
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal 1-Clique WhatsApp Notificação Administrador Gabriel */}
+      <AnimatePresence>
+        {whatsappNotifyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-[#121212] border-2 border-emerald-500 rounded-3xl p-6 max-w-md w-full relative shadow-2xl shadow-emerald-500/20 text-center tech-border-beam"
+            >
+              <button 
+                onClick={() => setWhatsappNotifyModal(null)}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white/70 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/10">
+                <MessageSquare className="w-8 h-8 text-emerald-400" />
+              </div>
+
+              <h3 className="text-xl font-black text-white uppercase tracking-tight mb-2">
+                Notificação WhatsApp (1 Clique)
+              </h3>
+
+              <p className="text-xs text-white/80 leading-relaxed mb-4">
+                Agendamento concluído! O aplicativo já abriu a notificação no WhatsApp para o barbeiro <strong>Gabriel</strong> (<strong>55 21 98988-4121</strong>). Se desejar reenviar, clique abaixo:
+              </p>
+
+              <div className="bg-white/5 border border-white/10 p-3.5 rounded-2xl text-left space-y-1.5 mb-5 text-xs text-white/90">
+                <p>👤 <strong className="text-white/60">Cliente:</strong> {whatsappNotifyModal.customerName}</p>
+                <p>✂️ <strong className="text-white/60">Serviço:</strong> {whatsappNotifyModal.haircutName}</p>
+                <p>⏰ <strong className="text-white/60">Horário:</strong> {whatsappNotifyModal.bookingTime}</p>
+                <p>📲 <strong className="text-white/60">Destino:</strong> Gabriel (55 21 98988-4121)</p>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  onClick={() => {
+                    sendWhatsAppNotificationToAdmin(
+                      whatsappNotifyModal.customerName,
+                      whatsappNotifyModal.haircutName,
+                      whatsappNotifyModal.bookingTime
+                    );
+                    setWhatsappNotifyModal(null);
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 px-5 rounded-2xl shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-pointer transition-all active:scale-95"
+                >
+                  <MessageSquare className="w-5 h-5" />
+                  <span>Reenviar no WhatsApp de Gabriel</span>
+                </button>
+
+                <button
+                  onClick={() => setWhatsappNotifyModal(null)}
+                  className="w-full bg-white/10 hover:bg-white/15 text-white/70 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider cursor-pointer transition-colors"
+                >
+                  Concluir e Voltar
+                </button>
               </div>
             </motion.div>
           </div>
