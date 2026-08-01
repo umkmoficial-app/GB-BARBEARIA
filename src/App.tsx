@@ -1185,16 +1185,23 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="p-5 md:p-8 bg-amber-500/10 border border-amber-500/20 rounded-3xl tech-border-beam space-y-3">
-                    <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-amber-500">
-                      <Bell className="w-4.5 h-4.5 text-amber-500" /> LEMBRETE NO APLICATIVO
+                  {/* Card Instagram Oficial */}
+                  <div className="p-5 md:p-8 bg-gradient-to-br from-pink-500/10 via-purple-500/10 to-amber-500/10 border border-pink-500/30 rounded-3xl tech-border-beam space-y-3">
+                    <h4 className="text-sm md:text-lg font-bold uppercase tracking-tighter flex items-center gap-2 text-pink-400">
+                      <Instagram className="w-5 h-5 text-pink-400" /> INSTAGRAM OFICIAL
                     </h4>
-                    <p className="text-xs md:text-sm text-white/80 leading-relaxed font-medium">
-                      O aplicativo exibirá um aviso em tela <strong>20 minutos antes do seu horário marcado</strong> para você não perder a hora!
+                    <p className="text-xs md:text-sm text-white/90 leading-relaxed font-medium">
+                      Acompanhe o nosso trabalho pelo instagram oficial.
                     </p>
-                    <p className="text-[11px] text-white/50 leading-relaxed">
-                      Solicitamos a gentileza de comparecer com 10 minutos de antecedência.
-                    </p>
+                    <a
+                      href="https://www.instagram.com/gabriel_barber_16/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-gradient-to-r from-pink-600 via-purple-600 to-amber-500 hover:from-pink-500 hover:to-amber-400 text-white font-black py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-pink-600/25 active:scale-95"
+                    >
+                      <Instagram className="w-4 h-4" />
+                      <span>Ver Instagram Oficial (@gabriel_barber_16)</span>
+                    </a>
                   </div>
 
                   <div className="p-5 bg-white/5 border border-white/10 rounded-3xl flex gap-3.5 items-start tech-border-beam">
